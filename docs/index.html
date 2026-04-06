@@ -107,9 +107,8 @@
       <label>
         Rows per page:
         <select id="segmentsPageSize">
-          <option value="25">25</option>
-          <option value="50" selected>50</option>
-          <option value="100">100</option>
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
           <option value="250">250</option>
         </select>
       </label>
@@ -501,6 +500,8 @@
   let linesTabController = null;
   let segmentsColumnOrder = [];
   let segmentsColumnDefs = [];
+  const TRIGRAM_SEGMENTS_PAGE_SIZE_DEFAULT = 100;
+  const SEGMENTS_PAGINATION_NGRAM = 3;
   // Column filters maps (declare early for deep-link)
   // Scope segments filters by current granularity (play/genre/act/scene/line/character)
   const segmentsFiltersByGran = new Map(); // gran -> Map(columnKey -> filter)
@@ -511,11 +512,21 @@
   }
   // Segments pagination and rows (declare early for deep-link)
   let segmentsCurrentPage = 1;
-  let segmentsPageSize = 50;
+  let segmentsPageSize = TRIGRAM_SEGMENTS_PAGE_SIZE_DEFAULT;
   let segmentsAllRows = [];
   let lastSegmentsBaseRows = [];
+  const segmentsPaginationEl = document.getElementById('segmentsPagination');
+  const segmentsPageInfoEl = document.getElementById('segmentsPageInfo');
+  const segmentsTotalInfoEl = document.getElementById('segmentsTotalInfo');
+  const segmentsPageSizeEl = document.getElementById('segmentsPageSize');
   function normalizeSegmentsColumnKey(key) {
     return key === 'ref_code' ? 'location' : key;
+  }
+  if (segmentsPageSizeEl) {
+    const defaultOption = Array.from(segmentsPageSizeEl.options || []).find((opt) => {
+      return parseInt(opt.value, 10) === TRIGRAM_SEGMENTS_PAGE_SIZE_DEFAULT;
+    });
+    if (defaultOption) segmentsPageSizeEl.value = String(TRIGRAM_SEGMENTS_PAGE_SIZE_DEFAULT);
   }
   // Deep link: human-readable query params (fallback to legacy base64 `state`)
   function buildQueryParamsFromState() {
@@ -628,6 +639,32 @@
     } else {
       setElementHidden(container, true);
     }
+  }
+  function shouldPaginateSegments() {
+    return getSelectedNgramModeValue() === SEGMENTS_PAGINATION_NGRAM;
+  }
+  function getVisibleSegmentsRows() {
+    if (!shouldPaginateSegments()) return segmentsAllRows;
+    return paginateArray(segmentsAllRows, segmentsCurrentPage, segmentsPageSize);
+  }
+  function syncSegmentsPaginationUi(totalRows) {
+    const totalPages = shouldPaginateSegments() ? getTotalPages(totalRows, segmentsPageSize) : 1;
+    if (segmentsCurrentPage > totalPages) segmentsCurrentPage = totalPages;
+    const shouldShowPager = shouldPaginateSegments() && totalRows > segmentsPageSize;
+    setElementHidden(segmentsPaginationEl, !shouldShowPager);
+    if (segmentsPageInfoEl) {
+      segmentsPageInfoEl.textContent = shouldPaginateSegments()
+        ? `Page ${segmentsCurrentPage} of ${totalPages}`
+        : 'All rows';
+    }
+    if (segmentsTotalInfoEl) {
+      segmentsTotalInfoEl.textContent = `(${totalRows} total rows)`;
+    }
+    const isSinglePage = !shouldPaginateSegments() || totalPages <= 1;
+    document.getElementById('segmentsFirstPage').disabled = isSinglePage || segmentsCurrentPage === 1;
+    document.getElementById('segmentsPrevPage').disabled = isSinglePage || segmentsCurrentPage === 1;
+    document.getElementById('segmentsNextPage').disabled = isSinglePage || segmentsCurrentPage === totalPages;
+    document.getElementById('segmentsLastPage').disabled = isSinglePage || segmentsCurrentPage === totalPages;
   }
   // Tab switching
   const tabBtns = document.querySelectorAll('.tab-btn');
@@ -1565,7 +1602,7 @@
     const colSpan = Math.max(1, theadRow.children.length || 8);
     if (!rows || rows.length===0){ 
       tbody.innerHTML = `<tr><td colspan="${colSpan}" class="muted">No results.</td></tr>`; 
-      setElementHidden(document.getElementById('segmentsPagination'), true);
+      syncSegmentsPaginationUi(0);
       updateSegmentsFilterActions();
       return; 
     }
@@ -1575,7 +1612,7 @@
     rows = applySegmentsFilters(rows);
     if (rows.length === 0) { 
       tbody.innerHTML = `<tr><td colspan="${colSpan}" class="muted">No results match the filters.</td></tr>`; 
-      setElementHidden(document.getElementById('segmentsPagination'), true);
+      syncSegmentsPaginationUi(0);
       updateSegmentsFilterActions();
       return; 
     }
@@ -1595,7 +1632,7 @@
     if (rows.length === 0) {
       const colSpan = Math.max(1, theadRow.children.length || 8);
       tbody.innerHTML = `<tr><td colspan="${colSpan}" class="muted">No results match the filters.</td></tr>`;
-      setElementHidden(document.getElementById('segmentsPagination'), true);
+      syncSegmentsPaginationUi(0);
       updateSegmentsFilterActions();
       return;
     }
@@ -1628,8 +1665,9 @@
   }
   
   function renderSegmentsPage() {
-    const totalPages = getTotalPages(segmentsAllRows.length, segmentsPageSize);
-    const paginatedRows = paginateArray(segmentsAllRows, segmentsCurrentPage, segmentsPageSize);
+    const totalPages = shouldPaginateSegments() ? getTotalPages(segmentsAllRows.length, segmentsPageSize) : 1;
+    if (segmentsCurrentPage > totalPages) segmentsCurrentPage = totalPages;
+    const visibleRows = getVisibleSegmentsRows();
 
     tbody.innerHTML = '';
     const colDefs = Array.from(theadRow.children).map((th) => ({
@@ -1641,7 +1679,7 @@
     const numericRankIndex = buildNumericRankIndex(segmentsAllRows, colDefs);
     const granVal = gran.value;
 
-    for (const r of paginatedRows) {
+    for (const r of visibleRows) {
       const tr = document.createElement('tr');
       cols.forEach((k) => {
         const td = document.createElement('td');
@@ -1686,17 +1724,7 @@
     }
 
     updateSortIndicators();
-
-    const paginationDiv = document.getElementById('segmentsPagination');
-    setElementHidden(paginationDiv, segmentsAllRows.length <= 25);
-
-    document.getElementById('segmentsPageInfo').textContent = `Page ${segmentsCurrentPage} of ${totalPages}`;
-    document.getElementById('segmentsTotalInfo').textContent = `(${segmentsAllRows.length} total rows)`;
-
-    document.getElementById('segmentsFirstPage').disabled = segmentsCurrentPage === 1;
-    document.getElementById('segmentsPrevPage').disabled = segmentsCurrentPage === 1;
-    document.getElementById('segmentsNextPage').disabled = segmentsCurrentPage === totalPages;
-    document.getElementById('segmentsLastPage').disabled = segmentsCurrentPage === totalPages;
+    syncSegmentsPaginationUi(segmentsAllRows.length);
     applyOrClear('#results');
     updateDeepLink();
     updateSegmentsFilterActions();
@@ -1757,16 +1785,19 @@
   
   // Segments pagination controls
   document.getElementById('segmentsFirstPage').addEventListener('click', () => {
+    if (!shouldPaginateSegments()) return;
     segmentsCurrentPage = 1;
     renderSegmentsPage();
   });
   document.getElementById('segmentsPrevPage').addEventListener('click', () => {
+    if (!shouldPaginateSegments()) return;
     if (segmentsCurrentPage > 1) {
       segmentsCurrentPage--;
       renderSegmentsPage();
     }
   });
   document.getElementById('segmentsNextPage').addEventListener('click', () => {
+    if (!shouldPaginateSegments()) return;
     const totalPages = getTotalPages(segmentsAllRows.length, segmentsPageSize);
     if (segmentsCurrentPage < totalPages) {
       segmentsCurrentPage++;
@@ -1774,11 +1805,12 @@
     }
   });
   document.getElementById('segmentsLastPage').addEventListener('click', () => {
+    if (!shouldPaginateSegments()) return;
     segmentsCurrentPage = getTotalPages(segmentsAllRows.length, segmentsPageSize);
     renderSegmentsPage();
   });
   document.getElementById('segmentsPageSize').addEventListener('change', (e) => {
-    segmentsPageSize = parseInt(e.target.value);
+    segmentsPageSize = parseInt(e.target.value, 10);
     segmentsCurrentPage = 1;
     renderSegmentsPage();
   });
