@@ -15,6 +15,12 @@
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
+  <div id="loadingIndicator" class="loading-indicator" role="status" aria-live="polite">
+    <div class="loading-indicator-card">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p id="loadingMessage" class="loading-message">Loading data...</p>
+    </div>
+  </div>
   <h1><a href="https://contabulate.org/">Contabulate</a>: 🐋 Melville Tabular Search</h1>
   <p class="muted">Search words, bigrams, or trigrams across the complete prose fiction of Herman Melville. Use regex (e.g., <code>^whale$</code>) or plain text. Source texts courtesy of Project Gutenberg.</p>
   <p class="muted">the complete prose fiction of Herman Melville</p>
@@ -200,6 +206,8 @@
 <script>
 (async function() {
   window.__contabulateReady = false;
+  const loadingIndicator = document.getElementById('loadingIndicator');
+  const loadingMessage = document.getElementById('loadingMessage');
   const q = document.getElementById('q');
   const gran = document.getElementById('gran');
   const matchMode = document.getElementById('matchMode');
@@ -224,6 +232,15 @@
   const resultsTable = document.getElementById('results');
   let rankHintBubbleEl = null;
   let rankHintBubbleTimer = null;
+
+  function setLoadingState(isLoading, message) {
+    if (loadingMessage && typeof message === 'string' && message) {
+      loadingMessage.textContent = message;
+    }
+    if (loadingIndicator) {
+      setElementHidden(loadingIndicator, !isLoading);
+    }
+  }
 
   function stopQPlaceholderAnimation(clearNow = false) {
     if (qPlaceholderTimer) {
@@ -691,6 +708,7 @@
 
   let chunks=[], tokens={}, tokens2={}, tokens3={}, plays=[], characters=[], tokensChar={}, tokensChar2={}, tokensChar3={}, allLines=[], characterNameFilterConfig=null;
   try {
+    setLoadingState(true, 'Loading data...');
     [chunks, tokens, tokens2, tokens3, plays, characters, tokensChar, tokensChar2, tokensChar3, characterNameFilterConfig] = await Promise.all([
       loadJSON('data/chunks.json'),
       loadJSON('data/tokens.json'),
@@ -704,6 +722,7 @@
       loadJSON('data/character_name_filter_config.json').catch(() => null),
     ]);
   } catch(e) {
+    setLoadingState(true, 'Unable to load data. Please reload the page.');
     console.error('Failed to load data:', e);
     return;
   }
@@ -711,6 +730,7 @@
 
   // Load line data
   try {
+    setLoadingState(true, 'Loading paragraph text...');
     allLines = await loadJSON('lines/all_lines.json');
   } catch(e) {
     console.warn('Verse data not available:', e);
@@ -734,6 +754,8 @@
   }
 
   // Name normalization util used elsewhere
+
+  setLoadingState(false);
 
   renderExtraTerms();
 
