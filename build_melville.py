@@ -2,6 +2,7 @@
 """Build Contabulate JSON data files for Melville's prose fiction corpus."""
 
 import json
+import math
 import os
 import re
 from collections import Counter, defaultdict
@@ -137,6 +138,27 @@ def paragraphs_from_text(text):
 
 def tokenize(text):
     return re.findall(r"[a-zA-Z']+(?:-[a-zA-Z']+)*", text.lower())
+
+
+SENT_RE = re.compile(r"[.!?]+")
+
+
+def count_sentences(text):
+    return len(SENT_RE.findall(text or ""))
+
+
+def mattr(tokens, window=50):
+    """Moving-average type-token ratio: lexical diversity comparable across lengths."""
+    if not tokens:
+        return 0.0
+    if len(tokens) < window:
+        return len(set(tokens)) / len(tokens)
+    ratios = [
+        len(set(tokens[i:i + window])) / window
+        for i in range(len(tokens) - window + 1)
+    ]
+    return sum(ratios) / len(ratios)
+
 
 
 def build_ngrams(tokens, n):
@@ -374,6 +396,7 @@ def build_json_corpus(catalog):
         play_location = f"{play_id:02d}.{play_abbr}"
         work_total_words = 0
         work_total_lines = 0
+        work_tokens = []  # ordered token stream for work-level MATTR
 
         for section in sections:
             section_num = section["number"]
@@ -408,6 +431,7 @@ def build_json_corpus(catalog):
                         "num_speeches": 0,
                         "num_lines": 1,
                         "characters_present_count": 0,
+                        "sentence_count": count_sentences(para),
                         "act_label": act_label,
                         "scene_label": scene_label,
                     }
@@ -438,6 +462,7 @@ def build_json_corpus(catalog):
                 unique_bigrams.update(bigram_counts)
                 unique_trigrams.update(trigram_counts)
 
+                work_tokens.extend(words)
                 work_total_words += word_count
                 work_total_lines += 1
                 total_words += word_count
@@ -456,6 +481,7 @@ def build_json_corpus(catalog):
                 "num_speeches": 0,
                 "total_words": work_total_words,
                 "total_lines": work_total_lines,
+                "mattr_50": round(mattr(work_tokens), 3),
             }
         )
         per_work_stats.append(
@@ -467,6 +493,25 @@ def build_json_corpus(catalog):
                 "words": work_total_words,
             }
         )
+
+    # Additive metric fields (char_count, rarity_sum) per paragraph. The UI
+    # derives ratio metrics (mean word length, lexical rarity) at any
+    # aggregation level by summing these and dividing by total words.
+    corpus_freq = {tok: sum(c for _, c in postings) for tok, postings in tokens1.items()}
+    corpus_total = sum(corpus_freq.values()) or 1
+    tok_rarity = {tok: -math.log10(f / corpus_total) for tok, f in corpus_freq.items()}
+    para_chars = {}
+    para_rarity = {}
+    for tok, postings in tokens1.items():
+        length = len(tok)
+        rarity = tok_rarity[tok]
+        for sid, count in postings:
+            para_chars[sid] = para_chars.get(sid, 0) + length * count
+            para_rarity[sid] = para_rarity.get(sid, 0.0) + rarity * count
+    for chunk_row in chunks:
+        sid = chunk_row["scene_id"]
+        chunk_row["char_count"] = para_chars.get(sid, 0)
+        chunk_row["rarity_sum"] = round(para_rarity.get(sid, 0.0), 3)
 
     return {
         "plays": plays,
