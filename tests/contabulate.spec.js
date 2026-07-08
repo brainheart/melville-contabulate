@@ -162,3 +162,16 @@ test.describe('Paragraphs View', () => {
     await expect(page.locator('#results tbody tr').first()).toBeVisible();
   });
 });
+
+test('vocabulary scope survives switching the n-gram size', async ({ page }) => {
+  await page.goto('/?gran=word&s_ft_location=%5E06%5C.MD%5C.');
+  await waitForDataLoaded(page);
+  await page.waitForSelector('#results tbody tr', { timeout: 10000 });
+  await expect(page.locator('#segmentsActiveFilters .active-filter-chip')).toContainText('starts with 06.MD.');
+  // Switching word -> bigram keeps the same scope in place
+  await page.selectOption('#gran', 'bigram');
+  await page.waitForSelector('#results tbody tr', { timeout: 10000 });
+  await expect(page.locator('#segmentsActiveFilters .active-filter-chip')).toContainText('starts with 06.MD.');
+  await page.selectOption('#gran', 'trigram');
+  await expect(page.locator('#segmentsActiveFilters .active-filter-chip')).toContainText('starts with 06.MD.');
+});
