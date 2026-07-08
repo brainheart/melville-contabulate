@@ -1,3 +1,4 @@
-*.txt
-build_melville_db_ref.py
-CATALOG.json
+node_modules/
+test-results/
+playwright-report/
+__pycache__/

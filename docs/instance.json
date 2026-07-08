@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "melville",
+  "emoji": "🐋",
+  "title": "Melville",
+  "tagline": "Melville Tabular Explorer",
+  "language": "English",
+  "url": "https://melville.contabulate.org/",
+  "source": "https://github.com/brainheart/melville-contabulate",
+  "sample_queries": [],
+  "updated": "2026-07-07",
+  "stats": {
+    "texts": 11,
+    "text_label": "works",
+    "segments": 19008,
+    "segment_label": "paragraphs",
+    "words": 1232881,
+    "distinct_words": 43463
+  }
+}

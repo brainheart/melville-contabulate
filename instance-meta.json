@@ -1,0 +1,12 @@
+{
+  "id": "melville",
+  "emoji": "🐋",
+  "title": "Melville",
+  "tagline": "Melville Tabular Explorer",
+  "language": "English",
+  "url": "https://melville.contabulate.org/",
+  "source": "https://github.com/brainheart/melville-contabulate",
+  "text_label": "works",
+  "segment_label": "paragraphs",
+  "sample_queries": []
+}

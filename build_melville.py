@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build Contabulate JSON data files for Melville's prose fiction corpus."""
 
+import datetime
 import json
 import math
 import os
@@ -502,16 +503,21 @@ def build_json_corpus(catalog):
     tok_rarity = {tok: -math.log10(f / corpus_total) for tok, f in corpus_freq.items()}
     para_chars = {}
     para_rarity = {}
+    para_hapax = {}
     for tok, postings in tokens1.items():
         length = len(tok)
         rarity = tok_rarity[tok]
         for sid, count in postings:
             para_chars[sid] = para_chars.get(sid, 0) + length * count
             para_rarity[sid] = para_rarity.get(sid, 0.0) + rarity * count
+        if corpus_freq[tok] == 1:
+            sid = postings[0][0]
+            para_hapax[sid] = para_hapax.get(sid, 0) + 1
     for chunk_row in chunks:
         sid = chunk_row["scene_id"]
         chunk_row["char_count"] = para_chars.get(sid, 0)
         chunk_row["rarity_sum"] = round(para_rarity.get(sid, 0.0), 3)
+        chunk_row["hapax_count"] = para_hapax.get(sid, 0)
 
     return {
         "plays": plays,
@@ -548,6 +554,32 @@ def write_outputs(data):
     dump_json(os.path.join(OUT_DIR, "tokens_char3.json"), {})
     dump_json(os.path.join(OUT_DIR, "character_name_filter_config.json"), {"plays": {}})
     dump_json(os.path.join(LINES_DIR, "all_lines.json"), data["lines"])
+
+    # Publish instance metadata for the contabulate.org hub: curated fields
+    # from instance-meta.json merged with computed corpus stats.
+    instance_meta_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instance-meta.json")
+    instance_meta = {}
+    if os.path.exists(instance_meta_path):
+        with open(instance_meta_path, encoding="utf-8") as f:
+            instance_meta = json.load(f)
+    totals = data["totals"]
+    instance_payload = {
+        "schema": 1,
+        **instance_meta,
+        "updated": datetime.date.today().isoformat(),
+        "stats": {
+            "texts": totals["works"],
+            "text_label": instance_meta.get("text_label", "works"),
+            "segments": totals["paragraphs"],
+            "segment_label": instance_meta.get("segment_label", "paragraphs"),
+            "words": totals["words"],
+            "distinct_words": totals["unique_unigrams"],
+        },
+    }
+    instance_payload.pop("text_label", None)
+    instance_payload.pop("segment_label", None)
+    with open(os.path.join(os.path.dirname(OUT_DIR), "instance.json"), "w", encoding="utf-8") as f:
+        json.dump(instance_payload, f, ensure_ascii=False, indent=2)
 
 
 def main():

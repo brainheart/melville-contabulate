@@ -1,0 +1,26 @@
+{
+  "name": "melville-contabulate",
+  "version": "1.0.0",
+  "description": "Static tabular search for the complete prose fiction of Herman Melville, built from Project Gutenberg eTexts into GitHub Pages-friendly JSON indexes.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brainheart/melville-contabulate.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/brainheart/melville-contabulate/issues"
+  },
+  "homepage": "https://github.com/brainheart/melville-contabulate#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
