@@ -5,16 +5,19 @@
   "title": "Melville",
   "tagline": "Melville Tabular Explorer",
   "language": "English",
+  "created": "2026-04-03",
   "url": "https://melville.contabulate.org/",
   "source": "https://github.com/brainheart/melville-contabulate",
   "sample_queries": [],
-  "updated": "2026-07-07",
+  "updated": "2026-07-10",
   "stats": {
     "texts": 11,
     "text_label": "works",
     "segments": 19008,
     "segment_label": "paragraphs",
     "words": 1232881,
-    "distinct_words": 43463
+    "distinct_words": 43463,
+    "commentaries": 0,
+    "comments": 0
   }
 }

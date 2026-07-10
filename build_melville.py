@@ -574,6 +574,8 @@ def write_outputs(data):
             "segment_label": instance_meta.get("segment_label", "paragraphs"),
             "words": totals["words"],
             "distinct_words": totals["unique_unigrams"],
+            "commentaries": 0,
+            "comments": 0,
         },
     }
     instance_payload.pop("text_label", None)
