@@ -552,7 +552,12 @@ def write_outputs(data):
     dump_json(os.path.join(OUT_DIR, "tokens_char.json"), {})
     dump_json(os.path.join(OUT_DIR, "tokens_char2.json"), {})
     dump_json(os.path.join(OUT_DIR, "tokens_char3.json"), {})
-    dump_json(os.path.join(OUT_DIR, "character_name_filter_config.json"), {"plays": {}})
+    dump_json(os.path.join(OUT_DIR, "character_name_filter_config.json"), {
+        "enabled": False,
+        "notes": ["Disabled: this corpus does not yet have a reviewed proper-name list."],
+        "global_additions": [], "global_removals": [],
+        "play_additions": {}, "play_removals": {},
+    })
     dump_json(os.path.join(LINES_DIR, "all_lines.json"), data["lines"])
 
     # Publish instance metadata for the contabulate.org hub: curated fields
